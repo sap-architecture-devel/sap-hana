@@ -1,5 +1,18 @@
 # Change Log
 
+## 2020-05-13
+
+- [Tomas Krojzl] Written initial content for following sections (Ready for Review):
+
+> 4) Platform Specific Architecture
+>    - IaaS Cloud: AWS
+>    - IaaS Cloud: Azure
+
+- [Tomas Krojzl] Updated initial content for following sections (Ready for Review):
+
+> 3) Generic SAP HANA Architecture
+>    - Module: Data Tiering Options
+
 ## 2020-05-12
 
 - [Vladimir Kovarik] Updated sections _Azure: Virtual Hostname/IP_ in `pages/platform_specific_architecture/cloud_iaas_azure.md`

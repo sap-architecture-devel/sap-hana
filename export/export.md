@@ -55,9 +55,10 @@ Basic steps are following:
    - [Module: SAP XSA](#module-sap-xsa)
    - [Alternative Implementations](#alternative-implementations)
 4. Platform Specific Architecture
-   - [Cloud IaaS: AWS](#aws-overall-architecture)
-   - [Cloud IaaS: Azure](#azure-overall-architecture)
+   - [Cloud IaaS: AWS](#platform-specific-architecture-for-aws-amazon-web-services)
+   - [Cloud IaaS: Azure](#platform-specific-architecture-for-azure-microsoft-azure)
    - [Cloud IaaS: IBM Cloud](#platform-specific-architecture-for-ibm-cloud)
+   - Cloud IaaS: Google
    - On-premise: VMware
    - On-premise: IBM Power
 5. Operational Procedures
@@ -75,6 +76,27 @@ Basic steps are following:
 Please refer to [How to Contribute](#how-to-contribute) to understand how to contribute to this project.
 
 # Change Log
+
+## 2020-05-13
+
+- [Tomas Krojzl] Written initial content for following sections (Ready for Review):
+
+> 4) Platform Specific Architecture
+>    - IaaS Cloud: AWS
+>    - IaaS Cloud: Azure
+
+- [Tomas Krojzl] Updated initial content for following sections (Ready for Review):
+
+> 3) Generic SAP HANA Architecture
+>    - Module: Data Tiering Options
+
+## 2020-05-12
+
+- [Vladimir Kovarik] Updated sections _Azure: Virtual Hostname/IP_ in `pages/platform_specific_architecture/cloud_iaas_azure.md`
+
+## 2020-04-23
+
+- [Vladimir Kovarik] Updated sections _AWS: Virtual Hostname/IP_ in `pages/platform_specific_architecture/cloud_iaas_aws.md`
 
 ## 2019-12-19
 
@@ -566,7 +588,7 @@ Following Architectural Decisions (ADs) were made as part of this Reference Arch
 | **Assumptions**   | Overall design should support both single-node and scale-out in parallel next to each other.<br>Objective is to minimize the Recovery Time Objective (RTO).
 | **Options**       | 1. [SAP HANA Host Auto-Failover (HAF)](https://help.sap.com/viewer/6b94445c94ae495c83a19646e7c3fd56/2.0.04/en-US/ae60cab98173431c97e8724856641207.html)<br> 2. [SAP HANA System Replication (synchronous)](https://help.sap.com/viewer/6b94445c94ae495c83a19646e7c3fd56/2.0.04/en-US/b74e16a9e09541749a745f41246a065e.html)
 | **Decision**      | 2. SAP HANA System Replication (synchronous)
-| **Justification** | - this is the only option that is supporting [REQ2](../pages/requirements.md#req2-high-availability-ha-across-availability-zones-azs) for scale-out systems<br>- the Recovery Time Objective (RTO) values are significantly smaller compared to 1.<br>- this option is supporting additional features like [Active/Active (Read Enabled)](https://help.sap.com/viewer/4e9b18c116aa42fc84c7dbfd02111aba/2.0.04/en-US/8231617177f743d1ba46fdfc5a82dcd1.html) or [Secondary Time Travel](https://help.sap.com/viewer/4e9b18c116aa42fc84c7dbfd02111aba/2.0.04/en-US/ab3a78d7e0c143c6b9765fb287a3b0c7.html)
+| **Justification** | - this is the only option that is supporting [REQ2](#req2-high-availability-ha-across-availability-zones-azs) for scale-out systems<br>- the Recovery Time Objective (RTO) values are significantly smaller compared to 1.<br>- this option is supporting additional features like [Active/Active (Read Enabled)](https://help.sap.com/viewer/4e9b18c116aa42fc84c7dbfd02111aba/2.0.04/en-US/8231617177f743d1ba46fdfc5a82dcd1.html) or [Secondary Time Travel](https://help.sap.com/viewer/4e9b18c116aa42fc84c7dbfd02111aba/2.0.04/en-US/ab3a78d7e0c143c6b9765fb287a3b0c7.html)
 | **Comment**       | Recommended Replication Mode is `SYNC` in case there is possible shared Single Point of Failure (SPOF) or `SYNCMEM` in case of two physically separated infrastructures.<br>Recommended Operation Mode is `logreplay` (or `logreplay_readaccess`).
 
 ## AD2: Disaster Recovery Concept
@@ -1019,13 +1041,13 @@ Additional Information:
 
 # Module: Data Tiering Options
 
-SAP if offering range of capabilities how to optimize costs by segregating data into different storage and processing tiers. This module is discussing how individual Data Tiering options can be implemented as part of this Reference Architecture.
+SAP is offering range of capabilities how to optimize costs by segregating data into different storage and processing tiers. This module is discussing how individual Data Tiering options can be implemented as part of this Reference Architecture.
 
 <!-- TOC -->
 
 - [Module: Data Tiering Options](#module-data-tiering-options)
   - [Overview of Data Tiering Options for SAP HANA](#overview-of-data-tiering-options-for-sap-hana)
-  - [Persistent Memory (Non-Volatile Random Access Memory - NVRAM)](#persistent-memory-non-volatile-random-access-memory---nvram)
+  - [Persistent Memory (NVRAM)](#persistent-memory-nvram)
   - [SAP HANA Native Storage Extensions (NSE)](#sap-hana-native-storage-extensions-nse)
   - [SAP HANA Extension Nodes](#sap-hana-extension-nodes)
   - [SAP HANA Dynamic Tiering (DT)](#sap-hana-dynamic-tiering-dt)
@@ -1036,24 +1058,27 @@ SAP if offering range of capabilities how to optimize costs by segregating data 
 
 SAP is dividing the data based on the aging characteristics of the data and frequency of usage. Following data temperature tiers and tiering options are available:
 
-- Hot Data
-  - Dynamic Random Access Memory (DRAM)
-  - Persistent Memory (Non-Volatile Random Access Memory - NVRAM)
-- Warm Data
-  - SAP HANA Native Storage Extensions (NSE)
-  - SAP HANA Extension Nodes
-  - SAP HANA Dynamic Tiering (DT)
-- Cold Data
-  - SAP Data Hub / SAP Data Intelligence
-  - SAP HANA Spark Controller (Hadoop)
+| Data Tiering Option                                                                   | Native HANA | BW on HANA<br>BW/4HANA | Suite on HANA<br>S/4HANA
+|:--------------------------------------------------------------------------------------|:------------|:-----------------------|:----------------------
+| **Hot Data**                                                                          |
+| - Dynamic Random Access Memory (DRAM)                                                 | Yes         | Yes                    | Yes
+| - [Persistent Memory (NVRAM)](#persistent-memory-nvram)                               | Yes         | Yes                    | Yes
+| **Warm Data**                                                                         |
+| - [SAP HANA Native Storage Extensions (NSE)](#sap-hana-native-storage-extensions-nse) | Yes         | Yes                    | Yes
+| - [SAP HANA Extension Nodes](#sap-hana-extension-nodes)                               | Yes         | Yes                    | -
+| - [SAP HANA Dynamic Tiering (DT)](#sap-hana-dynamic-tiering-dt)                       | Yes         | -                      | -
+| **Cold Data**                                                                         |
+| - SAP Near Line Storage                                                               |
+| - SAP Data Hub / SAP Data Intelligence                                                |
+| - SAP HANA Spark Controller (Hadoop)                                                  |
 
-Selected Data Tiering Options are discussed in sections below.
+Selected Data Tiering Options (those impacting SAP HANA Reference Architecture) are discussed in sections below.
 
 Additional Information:
 
 - [Administration Guide: Data Tiering](https://help.sap.com/viewer/6b94445c94ae495c83a19646e7c3fd56/2.0.04/en-US/00421f8985a14e1b878195f4ce829be9.html)
 
-## Persistent Memory (Non-Volatile Random Access Memory - NVRAM)
+## Persistent Memory (NVRAM)
 
 SAP HANA in-memory data can be divided into following usage types:
 
@@ -1061,7 +1086,7 @@ SAP HANA in-memory data can be divided into following usage types:
 - Delta Data fragments (update information; frequent changes)
 - Temporary Data fragments (computational data; very frequent changes)
 
-Server memory must be combination of Traditional RAM (`DRAM`) and Persistent Memory (`NVRAM`). Traditional RAM (`DRAM`) is required during Operating System start and is also offering better performance for write operations. On the other hand, Persistent RAM (`NVRAM`) is cheaper and bigger and almost as fast as `DRAM` for read operations.
+Server memory must be combination of Traditional RAM (`DRAM`) and Persistent Memory (Non-Volatile Random Access Memory - `NVRAM`). Traditional RAM (`DRAM`) is required during Operating System start and is also offering better performance for write operations. On the other hand, Persistent RAM (`NVRAM`) is cheaper and bigger and almost as fast as `DRAM` for read operations.
 
 Therefore, Persistent Memory is intended only for Main Data fragments of Column Store tables that are changed very infrequently (only during Delta Merge operation).
 
@@ -1121,6 +1146,7 @@ Additional Information:
 - [Administration Guide: Extension Node](https://help.sap.com/viewer/6b94445c94ae495c83a19646e7c3fd56/2.0.04/en-US/e285ac03529a4cc9ab2d73206d2e8eca.html)
 - [Administration Guide: Redistributing Tables in a Scaleout SAP HANA System](https://help.sap.com/viewer/6b94445c94ae495c83a19646e7c3fd56/2.0.04/en-US/c6579b60d9761014ae59c8c868e6e054.html)
 - [More Details – HANA Extension Nodes for BW-on-HANA](http://scn.sap.com/community/bw-hana/blog/2016/04/26/more-details--hana-extension-nodes-for-bw-on-hana)
+- [SAP Note 2644438: SAP HANA Extension Node – Master Release Note](https://launchpad.support.sap.com/#/notes/2644438)
 
 ## SAP HANA Dynamic Tiering (DT)
 
@@ -1288,49 +1314,108 @@ Additional Information:
 
 # Platform Specific Architecture for AWS (Amazon Web Services)
 
-Description
-
-<!-- TOC -->
-
 - [Platform Specific Architecture for AWS (Amazon Web Services)](#platform-specific-architecture-for-aws-amazon-web-services)
   - [AWS: Overall Architecture](#aws-overall-architecture)
   - [AWS: Basic Architecture](#aws-basic-architecture)
-    - [AWS: Storage Configurations](#aws-storage-configurations)
+    - [AWS: Supported Instance Types for SAP HANA](#aws-supported-instance-types-for-sap-hana)
+    - [AWS: Storage Setup for SAP HANA Implementation](#aws-storage-setup-for-sap-hana-implementation)
+    - [AWS: Networking specifics for AWS Availability Zones](#aws-networking-specifics-for-aws-availability-zones)
   - [AWS: Virtual Hostname/IP](#aws-virtual-hostnameip)
+    - [AWS: Generic implementation steps](#aws-generic-implementation-steps)
+    - [AWS: Additional comments](#aws-additional-comments)
   - [AWS: High Availability](#aws-high-availability)
   - [AWS: Disaster Recovery](#aws-disaster-recovery)
   - [AWS: Data Tiering Options](#aws-data-tiering-options)
+    - [AWS: Persistent Memory (NVRAM)](#aws-persistent-memory-nvram)
+    - [AWS: SAP HANA Native Storage Extensions (NSE)](#aws-sap-hana-native-storage-extensions-nse)
+    - [AWS: SAP HANA Extension Nodes](#aws-sap-hana-extension-nodes)
+    - [AWS: SAP HANA Dynamic Tiering (DT)](#aws-sap-hana-dynamic-tiering-dt)
   - [AWS: XSA](#aws-xsa)
-
-<!-- /TOC -->
 
 ## AWS: Overall Architecture
 
+Following diagram is illustrating complete version of Reference Architecture for SAP HANA tailored for AWS (Amazon Web Services).
+
+For detailed explanation of individual modules please see individual sections in [Generic SAP HANA Architecture](#table-of-content).
+
 ![AWS: Overall Architecture](../images/arch-aws-overall.png)
 
-- some general text
-  - some basic links to AWS reference architectures and documentation
+You can also review official AWS Reference Architecture and other documentation:
+
+- [AWS: SAP on AWS Technical Documentation: SAP HANA](https://aws.amazon.com/sap/docs/#SAP_HANA)
+- [AWS: SAP HANA on the AWS Cloud: Quick Start Reference Deployment](https://docs.aws.amazon.com/quickstart/latest/sap-hana/welcome.html)
+- [AWS: Multi-AZ (HA), Single-Node Architecture](https://docs.aws.amazon.com/quickstart/latest/sap-hana/multi-az-single.html)
 
 ## AWS: Basic Architecture
 
 Link to generic content: [Module: Basic Architecture](#module-basic-architecture)
 
-- supported instance types
-- description of single node implementation (storage) + picture
-- description of scale-out implementations (storage) + picture
-- mention that each AZ is its own subnet
-- links to AWS documentation
+### AWS: Supported Instance Types for SAP HANA
 
-### AWS: Storage Configurations
+Not every instance type is supported for productive SAP HANA usage.
 
-- visualization of storage for AWS
+Official list of SAP certified instance types is available at [SAP: The SAP HANA Hardware Directory](https://www.sap.com/dmc/exp/2014-09-02-hana-hardware/enEN/iaas.html#categories=Amazon%20Web%20Services). This should always be used to decide whether the particular instance type is supported for SAP HANA or not.
+
+AWS specific list of certified instances with additional details can be found in [AWS: SAP HANA on AWS Quick Start Guide: AWS Instance Types for SAP HANA](https://docs.aws.amazon.com/quickstart/latest/sap-hana/instances.html)
+
+### AWS: Storage Setup for SAP HANA Implementation
+
+SAP HANA Storage Configuration is coming in two flavors:
+
+- General Purpose SSD (`gp2`) storage - cheaper storage that meets SAP KPI requirements for most of the SAP HANA workloads
+- Provisioned IOPS SSD (`io1`) storage - high-performance storage intended for most demanding SAP HANA workloads
+
+Following disk setup is recommended:
+
+![AWS: Storage Architecture](../images/arch-aws-storage.png)
+
+| Filesystem    | Name             | Device type  | Comment
+|:--------------|:-----------------|:-------------|:----------------
+| /             | Root volume      | gp2          |
+| /hana/data    | SAP HANA data    | gp2 / io1    |
+| /hana/log     | SAP HANA logs    | gp2 / io1    |
+| /hana/shared  | SAP HANA shared  | gp2          | Provisioned to the master, NFS-mounted on other nodes
+| /usr/sap      | SAP binaries     | gp2          |
+| /backups      | SAP HANA backup  | st1          | Provisioned to the master, NFS-mounted on other nodes
+| /backups      | SAP HANA backup  | Amazon EFS   | Alternative option for SAP HANA backup filesystem
+
+Instance specific sizing recommendations are available at [AWS: SAP HANA on AWS Quick Start Guide: Storage Configuration for SAP HANA](https://docs.aws.amazon.com/quickstart/latest/sap-hana/storage.html).
+
+### AWS: Networking specifics for AWS Availability Zones
+
+As visualized on the Overall Architecture diagram - in AWS each Availability Zone is having its own subnet. It is not possible to stretch one subnet across multiple Availability Zones. This needs to be taken into consideration during deployment planning.
+
+Impact on implementation of Cluster IP in AWS is described in [AWS: High Availability](#aws-high-availability).
 
 ## AWS: Virtual Hostname/IP
 
 Link to generic content: [Module: Virtual Hostname/IP](#module-virtual-hostnameip)
 
-- how to implement virtual IP - maybe additional elastic network interface?
-- reference to Instance Move and how to execute AWS specific steps (move elastic network interface?)
+This chapter describes recommended implementation of Virtual Hostname and Virtual IP for an SAP HANA installation on the AWS cloud.
+
+The implementation is based on assigning a _Secondary private IP address_ to an existing network interface of the AWS instance. A _Secondary private IP address_ can be easily reassigned to another AWS instance and so it can follow SAP HANA instance relocation. For more details see [AWS: Multiple IP Addresses](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/MultipleIP.html). This _Secondary private IP address_ is associated with the Virtual Hostname which is used during SAP HANA instance installation.
+
+### AWS: Generic implementation steps 
+
+- define Virtual IP (in the same subnet as the network interface) and Virtual Hostname for SAP HANA Instance
+- assign _Virtual IP_ as _Secondary private IP address_ to existing network interface (see [AWS: assign secondary private IP](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/MultipleIP.html#assignIP-existing))
+- configure OS to use _Virtual IP Address_ (e.g. [SUSE: Administration Guide - Configuring Multiple Addresses](https://documentation.suse.com/sles/12-SP4/single-html/SLES-admin/index.html#sec-basicnet-yast-configure-addresses))
+- make Virtual Hostname resolvable (e.g. updating `/etc/hosts`)
+- install SAP HANA instance with the _Virtual Hostname_ (see [SAP: Administration Guide - Default Host Names and Virtual Host Names](https://help.sap.com/viewer/6b94445c94ae495c83a19646e7c3fd56/2.0.04/en-US/aa7e697ccf214852a283a75126c34370.html))
+
+**Note:** _Virtual IP_ can be be reassigned to another AWS instance thanks to option "_Allow reassignment_" of the network interface (see [AWS: assign a secondary private IPv4 address](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/MultipleIP.html#assignIP-existing))
+
+### AWS: Additional comments
+
+**SAP HANA inbound network communication**
+
+A network communication initiated from a remote system to the Virtual IP of SAP HANA instance is established and takes place between remote system IP and the Virtual IP (_Secondary private IP address_). 
+The _Primary private IP address_ on the same interface is not involved in this communication.
+
+**SAP HANA outbound network communication**
+
+In contrast to an inbound connection, when SAP HANA instance initiates a network connection to a remote system the _Primary private IP address_ is used as source IP instead of Virtual IP (_Secondary private IP address_).  
+If there is requirement to use Virtual IP as the source IP, it could be achieved by means of linux routing. The core of the idea is to add route specifying source address like `ip route add <network/mask> via <gateway> src <virtual_ip>` (see [Routing for multiple uplinks/providers](https://www.tldp.org/HOWTO/Adv-Routing-HOWTO/lartc.rpdb.multiple-links.html#AEN258)).
 
 ## AWS: High Availability
 
@@ -1353,67 +1438,212 @@ Link to generic content: [Module: High Availability](#module-high-availability)
 
 Link to generic content: [Module: Disaster Recovery](#module-disaster-recovery)
 
-- anything to consider? bandwidth?
+Disaster Recovery for SAP HANA via SAP HANA System Replication is not infrastructure dependent.
 
 ## AWS: Data Tiering Options
 
 Link to generic content: [Module: Data Tiering Options](#module-data-tiering-options)
 
-- what is supported what is not (matrix)
-- links to AWS documentation
-- modified pictures of storage setup (if required)
+Following data tiering options are supposed on AWS:
+
+| Data Tiering Option                                                                     | Supported
+|:----------------------------------------------------------------------------------------|:-----------------
+| [Persistent Memory (NVRAM)](#aws-persistent-memory-nvram)                               | No
+| [SAP HANA Native Storage Extensions (NSE)](#aws-sap-hana-native-storage-extensions-nse) | Yes
+| [SAP HANA Extension Nodes](#aws-sap-hana-extension-nodes)                               | Yes
+| [SAP HANA Dynamic Tiering (DT)](#aws-sap-hana-dynamic-tiering-dt)                       | Yes
+
+Additional Information:
+
+- [AWS: SAP Data Tiering](https://docs.aws.amazon.com/sap/latest/sap-hana/sap-data-tiering.html)
+
+### AWS: Persistent Memory (NVRAM)
+
+Amazon Web Services platform does not offer any instance types having NVRAM that are supported for productive SAP HANA usage.
+
+### AWS: SAP HANA Native Storage Extensions (NSE)
+
+SAP HANA Native Storage Extensions only need additional disk space compared to regular SAP HANA deployments. Amazon Web Services platform does allow to provision additional disks to SAP HANA VM and add capacity into existing filesystems. There is no change to the design of the storage layout.
+
+### AWS: SAP HANA Extension Nodes
+
+SAP HANA Extension Node implementation is based on provisioning additional SAP HANA node (with increased storage capacity) to existing SAP HANA system. Result is SAP HANA Scale-Out system where one of the nodes is designated as SAP HANA Extension Node. Storage layout is same as for regular SAP HANA nodes and it is visualized above in section [AWS: Storage Setup for SAP HANA Implementation](#aws-storage-setup-for-sap-hana-implementation).
+
+Additional Information:
+
+- [AWS: Warm Data Tiering Options: SAP HANA Extension Node](https://docs.aws.amazon.com/sap/latest/sap-hana/warm-data-tiering-options.html#sap-hana-extension-node)
+
+### AWS: SAP HANA Dynamic Tiering (DT)
+
+SAP HANA Dynamic Tiering (DT) implementation in Amazon Web Services platform is based on provisioning additional VM for Dynamic Tiering component and connecting it to VM hosting SAP HANA instance, thus forming two-node distributed setup. Storage layout is identical to SAP HANA Scale-out setup as illustrated above in section [AWS: Storage Setup for SAP HANA Implementation](#aws-storage-setup-for-sap-hana-implementation).
+
+Additional Information:
+
+- [AWS: Warm Data Tiering Options: SAP HANA Dynamic Tiering](https://docs.aws.amazon.com/sap/latest/sap-hana/warm-data-tiering-options.html#sap-hana-dynamic-tiering)
 
 ## AWS: XSA
 
 Link to generic content: [Module: SAP XSA](#module-sap-xsa)
 
-- I think there is nothing infrastructure specific
+SAP HANA extended application services, advanced model (XSA) component is not infrastructure dependent.
 
 # Platform Specific Architecture for Azure (Microsoft Azure)
-
-Description
-
-<!-- TOC -->
 
 - [Platform Specific Architecture for Azure (Microsoft Azure)](#platform-specific-architecture-for-azure-microsoft-azure)
   - [Azure: Overall Architecture](#azure-overall-architecture)
   - [Azure: Basic Architecture](#azure-basic-architecture)
-    - [Azure: Storage Configurations](#azure-storage-configurations)
+    - [Azure: Supported Instance Types for SAP HANA](#azure-supported-instance-types-for-sap-hana)
+    - [Azure: Storage Setup for SAP HANA Implementation](#azure-storage-setup-for-sap-hana-implementation)
+      - [Azure: Storage Setup for SAP HANA Implementation - Azure Premium SSD](#azure-storage-setup-for-sap-hana-implementation---azure-premium-ssd)
+      - [Azure: Storage Setup for SAP HANA Implementation - Azure Ultra disk](#azure-storage-setup-for-sap-hana-implementation---azure-ultra-disk)
+      - [Azure: Storage Setup for SAP HANA Implementation - Azure NetApp Files](#azure-storage-setup-for-sap-hana-implementation---azure-netapp-files)
+    - [Azure: Networking specifics for Azure Availability Zones](#azure-networking-specifics-for-azure-availability-zones)
   - [Azure: Virtual Hostname/IP](#azure-virtual-hostnameip)
+    - [Azure: Generic implementation steps](#azure-generic-implementation-steps)
+    - [Azure: Additional comments](#azure-additional-comments)
   - [Azure: High Availability](#azure-high-availability)
   - [Azure: Disaster Recovery](#azure-disaster-recovery)
   - [Azure: Data Tiering Options](#azure-data-tiering-options)
+    - [Azure: Persistent Memory (NVRAM)](#azure-persistent-memory-nvram)
+    - [Azure: SAP HANA Native Storage Extensions (NSE)](#azure-sap-hana-native-storage-extensions-nse)
+    - [Azure: SAP HANA Extension Nodes](#azure-sap-hana-extension-nodes)
+    - [Azure: SAP HANA Dynamic Tiering (DT)](#azure-sap-hana-dynamic-tiering-dt)
   - [Azure: XSA](#azure-xsa)
-
-<!-- /TOC -->
 
 ## Azure: Overall Architecture
 
+Following diagram is illustrating complete version of Reference Architecture for SAP HANA tailored for Azure (Microsoft Azure).
+
+For detailed explanation of individual modules please see individual sections in [Generic SAP HANA Architecture](#table-of-content).
+
 ![Azure: Overall Architecture](../images/arch-azure-overall.png)
 
-- some general text
-  - some basic links to Azure reference architectures and documentation
+You can also review official Azure Reference Architecture and other documentation:
+
+- [Azure: SAP HANA infrastructure configurations and operations](https://docs.microsoft.com/en-us/azure/virtual-machines/workloads/sap/hana-vm-operations)
+- [Azure: SAP HANA (Large Instances) architecture](https://docs.microsoft.com/en-us/azure/virtual-machines/workloads/sap/hana-architecture)
 
 ## Azure: Basic Architecture
 
 Link to generic content: [Module: Basic Architecture](#module-basic-architecture)
 
-- supported instance types
-- description of single node implementation (storage) + picture
-- description of scale-out implementations (storage) + picture
-- mention that subnets are stretched across AZs
-- links to Azure documentation
+### Azure: Supported Instance Types for SAP HANA
 
-### Azure: Storage Configurations
+Not every instance type is supported for productive SAP HANA usage.
 
-- visualization of storage for Azure
+Official list of SAP certified instance types is available at [SAP: The SAP HANA Hardware Directory](https://www.sap.com/dmc/exp/2014-09-02-hana-hardware/enEN/iaas.html#categories=Microsoft%20Azure). This should always be used to decide whether the particular instance type is supported for SAP HANA or not.
+
+Azure specific list of certified instances with additional details can be found in following references:
+
+- [Azure: SAP HANA certifications](https://docs.microsoft.com/en-us/azure/virtual-machines/workloads/sap/sap-certifications#sap-hana-certifications)
+- [Azure: Available SKUs for HANA Large Instances](https://docs.microsoft.com/en-us/azure/virtual-machines/workloads/sap/hana-available-skus)
+
+### Azure: Storage Setup for SAP HANA Implementation
+
+SAP HANA Storage Configuration for Virtual Machines is coming in following flavors:
+
+- [Azure Premium SSD](#azure-storage-setup-for-sap-hana-implementation---azure-premium-ssd) - cheaper storage that meets SAP KPI requirements for most of the SAP HANA workloads
+- [Azure Ultra disk](#azure-storage-setup-for-sap-hana-implementation---azure-ultra-disk) - high-performance storage intended for most demanding SAP HANA workloads
+- [Azure NetApp Files](#azure-storage-setup-for-sap-hana-implementation---azure-netapp-files) - special option for [SAP HANA Host Auto-Failover (in single Availability Zone)](#sap-hana-host-auto-failover-in-single-availability-zone)
+
+Recommended disk setup for each option is described is following sections.
+
+SAP HANA Storage Configuration for HANA Large Instances is always based on NFS storage as supported deployment options are covered in [Azure: Supported scenarios for HANA Large Instances](https://docs.microsoft.com/en-us/azure/virtual-machines/workloads/sap/hana-supported-scenario).
+
+#### Azure: Storage Setup for SAP HANA Implementation - Azure Premium SSD
+
+![Azure: Storage Architecture - Azure Premium SSD](../images/arch-azure-storage1.png)
+
+| Filesystem    | Name             | Device type        | Comment
+|:--------------|:-----------------|:-------------------|:----------------
+| /             | Root volume      | P6 or P10          |
+| /hana/data    | SAP HANA data    | P20, P30 or P40    |
+| /hana/log     | SAP HANA logs    | P20                |
+| /hana/shared  | SAP HANA shared  | P20 or P30         | For Single-Node deployments
+| /hana/shared  | SAP HANA shared  | Azure NetApp Files | For Scale-Out deployments
+| /usr/sap      | SAP binaries     | P6                 |
+| /backups      | SAP HANA backup  | P20, P30, P40, P50 | For Single-Node deployments
+| /backups      | SAP HANA backup  | Azure NetApp Files | For Scale-Out deployments
+
+Instance specific sizing recommendations are available at [Azure: Azure Premium SSD](https://docs.microsoft.com/en-us/azure/virtual-machines/workloads/sap/hana-vm-operations-storage#solutions-with-premium-storage-and-azure-write-accelerator-for-azure-m-series-virtual-machines).
+
+Note: Cost conscious storage configuration is available for use, however, it is not officially supported by SAP.
+
+#### Azure: Storage Setup for SAP HANA Implementation - Azure Ultra disk
+
+![Azure: Storage Architecture - Azure Ultra disk](../images/arch-azure-storage2.png)
+
+| Filesystem    | Name             | Device type        | Comment
+|:--------------|:-----------------|:-------------------|:----------------
+| /             | Root volume      | P6 or P10          |
+| /hana/data    | SAP HANA data    | Ultra disk         | Alternatively can be on one volume with logs
+| /hana/log     | SAP HANA logs    | Ultra disk         | Alternatively can be on one volume with data
+| /hana/shared  | SAP HANA shared  | P20 or P30         | For Single-Node deployments
+| /hana/shared  | SAP HANA shared  | Azure NetApp Files | For Scale-Out deployments
+| /usr/sap      | SAP binaries     | P6                 |
+| /backups      | SAP HANA backup  | P20, P30, P40, P50 | For Single-Node deployments
+| /backups      | SAP HANA backup  | Azure NetApp Files | For Scale-Out deployments
+
+Instance specific sizing recommendations are available at [Azure: Azure Ultra disk](https://docs.microsoft.com/en-us/azure/virtual-machines/workloads/sap/hana-vm-operations-storage#azure-ultra-disk-storage-configuration-for-sap-hana).
+
+Note: Please be aware about Ultra disk limitations as described in [Azure: Ultra disk - GA scope and limitations](https://docs.microsoft.com/en-gb/azure/virtual-machines/windows/disks-types#ga-scope-and-limitations).
+
+#### Azure: Storage Setup for SAP HANA Implementation - Azure NetApp Files
+
+![Azure: Storage Architecture - Azure NetApp Files](../images/arch-azure-storage3.png)
+
+| Filesystem    | Name             | Device type        | Comment
+|:--------------|:-----------------|:-------------------|:----------------
+| /             | Root volume      | P6 or P10          |
+| /hana/data    | SAP HANA data    | Azure NetApp Files | For bigger systems one volume per mount point
+| /hana/log     | SAP HANA logs    | Azure NetApp Files | For bigger systems one volume per mount point
+| /hana/shared  | SAP HANA shared  | Azure NetApp Files |
+| /usr/sap      | SAP binaries     | P6                 |
+| /backups      | SAP HANA backup  | Azure NetApp Files |
+
+Instance specific sizing recommendations are available at [Azure: Azure NetApp Files](https://docs.microsoft.com/en-us/azure/virtual-machines/workloads/sap/hana-vm-operations-storage#nfs-v41-volumes-on-azure-netapp-files).
+
+Note: Please be aware about Azure NetApp Files limitations as described in [Azure: Azure NetApp Files - Important considerations](https://docs.microsoft.com/en-gb/azure/virtual-machines/workloads/sap/sap-hana-scale-out-standby-netapp-files-suse#important-considerations).
+
+Key limitation is fact that Azure NetApp Files are not Availability Zone aware and can cause performance degradation when not deployed in close proximity (for example following High Availability takeover).
+
+### Azure: Networking specifics for Azure Availability Zones
+
+As visualized on the Overall Architecture diagram - in Azure both Availability Zones are using one subnet stretched across multiple Availability Zones. This is achieved by Network Virtualization, however, side effect of this approach is that classical [ARP cache](https://en.wikipedia.org/wiki/ARP_cache) invalidations are not working - this is having big impact on implementation of Cluster IP in Azure.
+
+Impact on implementation of Cluster IP in Azure is described in [Azure: High Availability](#azure-high-availability).
 
 ## Azure: Virtual Hostname/IP
 
 Link to generic content: [Module: Virtual Hostname/IP](#module-virtual-hostnameip)
 
-- how to implement virtual IP - maybe additional network interface?
-- reference to Instance Move and how to execute Azure specific steps (move network interface?)
+This chapter describes recommended implementation of Virtual Hostname and Virtual IP for an SAP HANA installation on the Azure cloud.
+
+The implementation is based on assigning a _Secondary static private IP address_ to an existing network interface of the Azure Virtual Machine (VM). A _Secondary static private IP address_ can be reassigned to another VM and so it can follow SAP HANA instance relocation. For more details see [Azure: Assign multiple IP addresses](https://docs.microsoft.com/en-us/azure/virtual-network/virtual-network-multiple-ip-addresses-portal). This _Secondary static private IP address_ is associated with the Virtual Hostname which is used during SAP HANA instance installation.
+
+### Azure: Generic implementation steps 
+
+- define Virtual IP (in the same subnet as the network interface) and Virtual Hostname for SAP HANA Instance
+- assign _Virtual IP_ as _Secondary static private IP address_ to existing network interface (see [Azure: Add IP addresses to a VM](https://docs.microsoft.com/en-us/azure/virtual-network/virtual-network-multiple-ip-addresses-portal#add)
+- configure OS to use _Virtual IP Address_ 
+  - e.g. [Azure: Add IP addresses to a VM operating system](https://docs.microsoft.com/en-us/azure/virtual-network/virtual-network-multiple-ip-addresses-portal#os-config)
+  - e.g. [SUSE: Administration Guide - Configuring Multiple Addresses](https://documentation.suse.com/sles/12-SP4/single-html/SLES-admin/index.html#sec-basicnet-yast-configure-addresses))
+- make Virtual Hostname resolvable (e.g. updating `/etc/hosts`)
+- install SAP HANA instance with the _Virtual Hostname_ (see [SAP: Administration Guide - Default Host Names and Virtual Host Names](https://help.sap.com/viewer/6b94445c94ae495c83a19646e7c3fd56/2.0.04/en-US/aa7e697ccf214852a283a75126c34370.html))
+
+**Note:** to reassign the _Virtual IP_ to another VM you need first to remove it on the existing VM and after that to assign it on the new VM (see [Azure: Remove IP addresses](https://docs.microsoft.com/en-us/azure/virtual-network/virtual-network-network-interface-addresses#remove-ip-addresses))
+
+### Azure: Additional comments
+
+**SAP HANA inbound network communication**
+
+A network communication initiated from a remote system to the Virtual IP of SAP HANA instance is established and takes place between remote system IP and the Virtual IP (_Secondary static private IP address_). 
+The _Primary private IP address_ on the same interface is not involved in this communication.
+
+**SAP HANA outbound network communication**
+
+In contrast to an inbound connection, when SAP HANA instance initiates a network connection to a remote system the _Primary private IP address_ is used as source IP instead of Virtual IP (_Secondary static private IP address_).  
+If there is requirement to use Virtual IP as the source IP, it could be achieved by means of linux routing. The core of the idea is to add route specifying source address like `ip route add <network/mask> via <gateway> src <virtual_ip>` (see [Routing for multiple uplinks/providers](https://www.tldp.org/HOWTO/Adv-Routing-HOWTO/lartc.rpdb.multiple-links.html#AEN258)).
 
 ## Azure: High Availability
 
@@ -1435,21 +1665,50 @@ Link to generic content: [Module: High Availability](#module-high-availability)
 
 Link to generic content: [Module: Disaster Recovery](#module-disaster-recovery)
 
-- anything to consider? bandwidth?
+Disaster Recovery for SAP HANA via SAP HANA System Replication is not infrastructure dependent.
 
 ## Azure: Data Tiering Options
 
 Link to generic content: [Module: Data Tiering Options](#module-data-tiering-options)
 
-- what is supported what is not (matrix)
-- links to Azure documentation
-- modified pictures of storage setup (if required)
+Following data tiering options are supposed on Azure for traditional Virtual Machines (VMs) and HANA Large Instances (HLI):
+
+| Data Tiering Option                                                                       | Supported (VMs) | Supported (HLI)
+|:------------------------------------------------------------------------------------------|:----------------|:----------------
+| [Persistent Memory (NVRAM)](#azure-persistent-memory-nvram)                               | No              | No
+| [SAP HANA Native Storage Extensions (NSE)](#azure-sap-hana-native-storage-extensions-nse) | Yes             | Yes
+| [SAP HANA Extension Nodes](#azure-sap-hana-extension-nodes)                               | Yes             | Yes
+| [SAP HANA Dynamic Tiering (DT)](#azure-sap-hana-dynamic-tiering-dt)                       | Yes             | No
+
+### Azure: Persistent Memory (NVRAM)
+
+Microsoft Azure platform does not offer any instance types having NVRAM that are supported for productive SAP HANA usage.
+
+### Azure: SAP HANA Native Storage Extensions (NSE)
+
+SAP HANA Native Storage Extensions only need additional disk space compared to regular SAP HANA deployments. Microsoft Azure platform does allow to provision additional disks to both SAP HANA VMs and HANA Large Instances to provide additional capacity into existing filesystems. There is no change to the design of the storage layout.
+
+### Azure: SAP HANA Extension Nodes
+
+SAP HANA Extension Node implementation is based on provisioning additional SAP HANA node (with increased storage capacity) to existing SAP HANA system. Result is SAP HANA Scale-Out system where one of the nodes is designated as SAP HANA Extension Node. Storage layout is same as for regular SAP HANA nodes and it is visualized above in section [Azure: Storage Setup for SAP HANA Implementation](#azure-storage-setup-for-sap-hana-implementation).
+
+Additional Information:
+
+- [Azure: HANA Large Instances: Use SAP HANA data tiering and extension nodes](https://docs.microsoft.com/en-us/azure/virtual-machines/workloads/sap/hana-data-tiering-extension-nodes)
+
+### Azure: SAP HANA Dynamic Tiering (DT)
+
+SAP HANA Dynamic Tiering (DT) implementation in Microsoft Azure platform is based on provisioning additional VM for Dynamic Tiering component and connecting it to VM hosting SAP HANA instance, thus forming two-node distributed setup. Storage layout is identical to SAP HANA Scale-out setup as illustrated above in section [Azure: Storage Setup for SAP HANA Implementation](#azure-storage-setup-for-sap-hana-implementation).
+
+Additional Information:
+
+- [Azure: SAP HANA Dynamic Tiering 2.0 for Azure virtual machines](https://docs.microsoft.com/en-us/azure/virtual-machines/workloads/sap/hana-vm-operations#sap-hana-dynamic-tiering-20-for-azure-virtual-machines)
 
 ## Azure: XSA
 
 Link to generic content: [Module: SAP XSA](#module-sap-xsa)
 
-- I think there is nothing infrastructure specific
+SAP HANA extended application services, advanced model (XSA) component is not infrastructure dependent.
 
 # Platform Specific Architecture for IBM Cloud
 
