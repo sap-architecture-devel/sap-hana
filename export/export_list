@@ -13,8 +13,3 @@
 ../pages/generic_architecture/alternative_implementations.md
 ../pages/platform_specific_architecture/cloud_iaas_aws.md
 ../pages/platform_specific_architecture/cloud_iaas_azure.md
-../pages/platform_specific_architecture/cloud_iaas_ibmcloud.md
-../pages/operational_procedures/process_ha_operation.md
-../pages/operational_procedures/process_dr_operation.md
-../pages/operational_procedures/process_instance_move.md
-../pages/operational_procedures/process_tenant_move.md

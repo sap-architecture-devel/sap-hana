@@ -1,5 +1,23 @@
 # Change Log
 
+## 2020-09-06
+
+- [Tomas Krojzl] Updated final content for following sections:
+
+> 4) Platform Specific Architecture
+>    - Cloud IaaS: AWS
+>    - Cloud IaaS: Azure
+
+- [Tomas Krojzl] Removed following sections (will be published in next release):
+
+> 4) Platform Specific Architecture
+>    - Cloud IaaS: IBM Cloud
+> 5) Operational Procedures
+>    - High Availability (HA) Operation
+>    - Disaster Recovery (DR) Operation
+>    - SAP HANA Instance Move
+>    - SAP HANA Tenant Move
+
 ## 2020-05-13
 
 - [Tomas Krojzl] Written initial content for following sections (Ready for Review):

@@ -17,6 +17,7 @@ Different options how Cluster IP can be configured are presented - each having i
       - [SAP HANA Scale-Out Scenario](#sap-hana-scale-out-scenario)
       - [SAP HANA Single-Node Scenario](#sap-hana-single-node-scenario)
     - [Cluster IP Design](#cluster-ip-design)
+      - [Typical Cluster IP Implementation](#typical-cluster-ip-implementation)
   - [Active/Active High Availability with Pacemaker Cluster](#activeactive-high-availability-with-pacemaker-cluster)
   - [Active/Active High Availability with Pacemaker Cluster (enabled for Tenant Move)](#activeactive-high-availability-with-pacemaker-cluster-enabled-for-tenant-move)
 
@@ -189,6 +190,10 @@ Additional Information:
 - [Administration Guide: Connections from Database Clients and Web Clients to SAP HANA](https://help.sap.com/viewer/6b94445c94ae495c83a19646e7c3fd56/2.0.04/en-US/37d2573cb24e4d75a23e8577fb4f73b7.html)
 - [Administration Guide: Connections for Distributed SAP HANA Systems](https://help.sap.com/viewer/6b94445c94ae495c83a19646e7c3fd56/2.0.04/en-US/82cea8fe69604f3ab0d4624248b6e523.html)
 - [TCP/IP Ports of All SAP Products](https://help.sap.com/viewer/ports)
+
+#### Typical Cluster IP Implementation
+
+Traditional implementation of Cluster IP is based on ARP cache invalidation. On primary server Pacemaker Cluster will define Cluster IP address by using command `ip addr add` combined with ARP cache invalidation via `arping` (see [ClusterLabs / resource-agents / heartbeat / IPaddr2](https://github.com/ClusterLabs/resource-agents/blob/5b18c216eae233751b243301255ae610cd49e52c/heartbeat/IPaddr2#L636)). During the takeover the Pacemaker Cluster will remove Cluster IP address from old primary server by using command `ip addr del` and it will recreate it on new primary server using commands mentioned above. The key requirement here is that both primary and secondary server are in same subnet so that Cluster IP address can be moved between them.
 
 ## Active/Active High Availability with Pacemaker Cluster
 

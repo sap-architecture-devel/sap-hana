@@ -57,15 +57,15 @@ Basic steps are following:
 4. Platform Specific Architecture
    - [Cloud IaaS: AWS](#platform-specific-architecture-for-aws-amazon-web-services)
    - [Cloud IaaS: Azure](#platform-specific-architecture-for-azure-microsoft-azure)
-   - [Cloud IaaS: IBM Cloud](#platform-specific-architecture-for-ibm-cloud)
+   - Cloud IaaS: IBM Cloud
    - Cloud IaaS: Google
    - On-premise: VMware
    - On-premise: IBM Power
 5. Operational Procedures
-   - [High Availability (HA) Operation](#high-availability-ha-operation)
-   - [Disaster Recovery (DR) Operation](#disaster-recovery-dr-operation)
-   - [SAP HANA Instance Move](#sap-hana-instance-move)
-   - [SAP HANA Tenant Move](#sap-hana-tenant-move)
+   - High Availability (HA) Operation
+   - Disaster Recovery (DR) Operation
+   - SAP HANA Instance Move
+   - SAP HANA Tenant Move
 6. Additional Information
    - SAP HANA: Network Latency Requirements
    - SAP HANA: Stacking Options (MCOD, MCOS, MDC)
@@ -76,6 +76,24 @@ Basic steps are following:
 Please refer to [How to Contribute](#how-to-contribute) to understand how to contribute to this project.
 
 # Change Log
+
+## 2020-09-06
+
+- [Tomas Krojzl] Updated final content for following sections:
+
+> 4) Platform Specific Architecture
+>    - Cloud IaaS: AWS
+>    - Cloud IaaS: Azure
+
+- [Tomas Krojzl] Removed following sections (will be published in next release):
+
+> 4) Platform Specific Architecture
+>    - Cloud IaaS: IBM Cloud
+> 5) Operational Procedures
+>    - High Availability (HA) Operation
+>    - Disaster Recovery (DR) Operation
+>    - SAP HANA Instance Move
+>    - SAP HANA Tenant Move
 
 ## 2020-05-13
 
@@ -788,6 +806,7 @@ Different options how Cluster IP can be configured are presented - each having i
       - [SAP HANA Scale-Out Scenario](#sap-hana-scale-out-scenario)
       - [SAP HANA Single-Node Scenario](#sap-hana-single-node-scenario)
     - [Cluster IP Design](#cluster-ip-design)
+      - [Typical Cluster IP Implementation](#typical-cluster-ip-implementation)
   - [Active/Active High Availability with Pacemaker Cluster](#activeactive-high-availability-with-pacemaker-cluster)
   - [Active/Active High Availability with Pacemaker Cluster (enabled for Tenant Move)](#activeactive-high-availability-with-pacemaker-cluster-enabled-for-tenant-move)
 
@@ -960,6 +979,10 @@ Additional Information:
 - [Administration Guide: Connections from Database Clients and Web Clients to SAP HANA](https://help.sap.com/viewer/6b94445c94ae495c83a19646e7c3fd56/2.0.04/en-US/37d2573cb24e4d75a23e8577fb4f73b7.html)
 - [Administration Guide: Connections for Distributed SAP HANA Systems](https://help.sap.com/viewer/6b94445c94ae495c83a19646e7c3fd56/2.0.04/en-US/82cea8fe69604f3ab0d4624248b6e523.html)
 - [TCP/IP Ports of All SAP Products](https://help.sap.com/viewer/ports)
+
+#### Typical Cluster IP Implementation
+
+Traditional implementation of Cluster IP is based on ARP cache invalidation. On primary server Pacemaker Cluster will define Cluster IP address by using command `ip addr add` combined with ARP cache invalidation via `arping` (see [ClusterLabs / resource-agents / heartbeat / IPaddr2](https://github.com/ClusterLabs/resource-agents/blob/5b18c216eae233751b243301255ae610cd49e52c/heartbeat/IPaddr2#L636)). During the takeover the Pacemaker Cluster will remove Cluster IP address from old primary server by using command `ip addr del` and it will recreate it on new primary server using commands mentioned above. The key requirement here is that both primary and secondary server are in same subnet so that Cluster IP address can be moved between them.
 
 ## Active/Active High Availability with Pacemaker Cluster
 
@@ -1323,7 +1346,13 @@ Additional Information:
   - [AWS: Virtual Hostname/IP](#aws-virtual-hostnameip)
     - [AWS: Generic implementation steps](#aws-generic-implementation-steps)
     - [AWS: Additional comments](#aws-additional-comments)
+      - [AWS: SAP HANA inbound network communication](#aws-sap-hana-inbound-network-communication)
+      - [AWS: SAP HANA outbound network communication](#aws-sap-hana-outbound-network-communication)
   - [AWS: High Availability](#aws-high-availability)
+    - [AWS: High Availability across Availability Zones](#aws-high-availability-across-availability-zones)
+      - [AWS: Which Availability Zone to use](#aws-which-availability-zone-to-use)
+    - [AWS: Available Fencing mechanism](#aws-available-fencing-mechanism)
+    - [AWS: Implementation of Cluster IP](#aws-implementation-of-cluster-ip)
   - [AWS: Disaster Recovery](#aws-disaster-recovery)
   - [AWS: Data Tiering Options](#aws-data-tiering-options)
     - [AWS: Persistent Memory (NVRAM)](#aws-persistent-memory-nvram)
@@ -1395,7 +1424,7 @@ This chapter describes recommended implementation of Virtual Hostname and Virtua
 
 The implementation is based on assigning a _Secondary private IP address_ to an existing network interface of the AWS instance. A _Secondary private IP address_ can be easily reassigned to another AWS instance and so it can follow SAP HANA instance relocation. For more details see [AWS: Multiple IP Addresses](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/MultipleIP.html). This _Secondary private IP address_ is associated with the Virtual Hostname which is used during SAP HANA instance installation.
 
-### AWS: Generic implementation steps 
+### AWS: Generic implementation steps
 
 - define Virtual IP (in the same subnet as the network interface) and Virtual Hostname for SAP HANA Instance
 - assign _Virtual IP_ as _Secondary private IP address_ to existing network interface (see [AWS: assign secondary private IP](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/MultipleIP.html#assignIP-existing))
@@ -1407,12 +1436,12 @@ The implementation is based on assigning a _Secondary private IP address_ to an 
 
 ### AWS: Additional comments
 
-**SAP HANA inbound network communication**
+#### AWS: SAP HANA inbound network communication
 
-A network communication initiated from a remote system to the Virtual IP of SAP HANA instance is established and takes place between remote system IP and the Virtual IP (_Secondary private IP address_). 
+A network communication initiated from a remote system to the Virtual IP of SAP HANA instance is established and takes place between remote system IP and the Virtual IP (_Secondary private IP address_).
 The _Primary private IP address_ on the same interface is not involved in this communication.
 
-**SAP HANA outbound network communication**
+#### AWS: SAP HANA outbound network communication
 
 In contrast to an inbound connection, when SAP HANA instance initiates a network connection to a remote system the _Primary private IP address_ is used as source IP instead of Virtual IP (_Secondary private IP address_).  
 If there is requirement to use Virtual IP as the source IP, it could be achieved by means of linux routing. The core of the idea is to add route specifying source address like `ip route add <network/mask> via <gateway> src <virtual_ip>` (see [Routing for multiple uplinks/providers](https://www.tldp.org/HOWTO/Adv-Routing-HOWTO/lartc.rpdb.multiple-links.html#AEN258)).
@@ -1421,18 +1450,55 @@ If there is requirement to use Virtual IP as the source IP, it could be achieved
 
 Link to generic content: [Module: High Availability](#module-high-availability)
 
-- link to list of Availability Zones in AWS
-- comment that it is important to measure AZ latency via niping (I will add this as new section in general part)
-- fencing mechanism (options, recommendation)
-- how to implement cluster IP (also referred as overlay IP)
-  - relation to different subnets per AZ
-  - entry in VPC routing table
-  - it is managed by cluster (need to assign IAM roles to VM)
-  - need to disable source/destination check on interface
-- links to AWS/SUSE/RHEL documentation
-- how to modify cluster to have active/active
-- how to modify cluster to have tenant specific cluster IPs
-- anything else?
+### AWS: High Availability across Availability Zones
+
+Best practice for deploying SAP HANA is to stretch High Availability cluster across Availability Zones. Each AWS Availability Zone is physically separate infrastructure, therefore deploying High Availability across Availability Zones ensures that there is no shared single-point-of-failure (SPOF) between primary and secondary SAP HANA system. This approach is significantly increasing overall resiliency of the High Availability of the solution.
+
+List of existing Availability Zones for individual AWS Regions is available here: [AWS: Regions and Availability Zones](https://aws.amazon.com/about-aws/global-infrastructure/regions_az).
+
+#### AWS: Which Availability Zone to use
+
+Most critical factor for selecting Availability Zones is network latency. Latency between individual Availability Zones can significantly differ and therefore it is important to measure network latency using SAP `niping` tool (see [SAP Note 500235: Network Diagnosis with NIPING](https://launchpad.support.sap.com/#/notes/500235) for additional information) and select Availability Zones with minimal latency.
+
+Furthermore, it is important to note that internal numbering of Availability Zones is specific for each individual AWS account. Therefore, the network latency test must be performed in given account. For additional information please see [AWS: Regions, Availability Zones, and Local Zones - Availability Zones](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-regions-availability-zones.html#concepts-availability-zones).
+
+Last thing to consider is whether desired instance types are available inside selected Availability Zones as not all Availability Zones are offering all instance types.
+
+### AWS: Available Fencing mechanism
+
+AWS is using IPMI-like Fencing (see [Module: High Availability - IPMI-like Fencing](#ipmi-like-fencing) for additional details). SBD (Storage Based Death) Fencing is not available in AWS.
+
+Fencing agent source code is available here: [external/ec2](https://github.com/ClusterLabs/cluster-glue/blob/master/lib/plugins/stonith/external/ec2). Behind the scenes it is using [StopInstances](https://docs.aws.amazon.com/AWSEC2/latest/APIReference/API_StopInstances.html) API call with `force` option. This will hard stop EC2 instance without gracefully stopping the Operating System.
+
+Following are most important prerequisites for `external/ec2` fencing mechanism to work properly:
+
+- EC2 instances need to be properly tagged - tags are used by fencing agent to find correct instance to stop (see [SUSE: Tagging the EC2 Instances](https://documentation.suse.com/sbp/all/html/SLES4SAP-hana-sr-guide-PerfOpt-12_AWS/index.html#_tagging_the_ec2_instances))
+- Configure AWS CLI - fencing agent is dependent on AWS CLI which needs to be configured properly (see [SUSE: Creating an AWS CLI Profile on Both EC2 Instances](https://documentation.suse.com/sbp/all/html/SLES4SAP-hana-sr-guide-PerfOpt-12_AWS/index.html#_creating_an_aws_cli_profile_on_both_ec2_instances))
+- Configure HTTP Proxies (or use NAT gateway) to access AWS APIs over internet (see [SUSE: Configure HTTP Proxies](https://documentation.suse.com/sbp/all/html/SLES4SAP-hana-sr-guide-PerfOpt-12_AWS/index.html#_configure_http_proxies))
+- Create STONITH policy and attach it as instance role (see [SUSE: STONITH Policy](https://documentation.suse.com/sbp/all/html/SLES4SAP-hana-sr-guide-PerfOpt-12_AWS/index.html#_stonith_policy))
+
+Please see [SUSE: SAP HANA High Availability Cluster for the AWS Cloud - Setup Guide - Prerequisites for the AWS-Specific HA Installation](https://documentation.suse.com/sbp/all/html/SLES4SAP-hana-sr-guide-PerfOpt-12_AWS/index.html#_prerequisites_for_the_aws_specific_ha_installation) for complete list of prerequisites.
+
+Additional Information:
+
+- [SUSE: SAP HANA High Availability Cluster for the AWS Cloud - Setup Guide](https://documentation.suse.com/sbp/all/html/SLES4SAP-hana-sr-guide-PerfOpt-12_AWS/index.html)
+- [Red Hat: Configure SAP HANA System Replication in Pacemaker on Amazon Web Services](https://access.redhat.com/articles/3569621)
+
+### AWS: Implementation of Cluster IP
+
+Traditional implementation of Cluster IP (not applicable to AWS) is covered in section [Module: High Availability - Typical Cluster IP Implementation](#typical-cluster-ip-implementation).
+
+In AWS each Availability Zone is having its own separate subnet and it is not possible to stretch one subnet across multiple Availability Zones. Therefore, different mechanism is required. AWS implementation of Cluster IP address is based on "Overlay IP" address concept. It is defined as additional entry in VPC routing table entry that is managed directly by Pacemaker Cluster. This entry is forwarding all packets sent to Overlay IP (third IP address in its own separate subnet) to the IP address of either primary or secondary server. During cluster takeover this VPC routing table entry is updated by Pacemaker cluster via AWS Command Line Interface (CLI) utility to point to new primary server. This concept is more in detail explained here:
+
+- [AWS: SAP on AWS High Availability with Overlay IP Address Routing](https://docs.aws.amazon.com/sap/latest/sap-hana/sap-ha-overlay-ip.html)
+- [IP Failover with Overlay IP Addresses](http://www.scalingbits.com/aws/ipfailover/overlay)
+
+In order to ensure that Pacemaker cluster is able to properly manage the VPC route table adjustments, it needs proper IAM access to be assigned to given VM. Technical details are explained in following documentation:
+
+- [SUSE: SAP HANA High Availability Cluster for the AWS Cloud - Setup Guide](https://documentation.suse.com/sbp/all/html/SLES4SAP-hana-sr-guide-PerfOpt-12_AWS/index.html#_aws_roles_and_policies)
+- [Red Hat: Configure SAP HANA System Replication in Pacemaker on Amazon Web Services](https://access.redhat.com/articles/3569621)
+
+Third requirement for this concept to work is to disable "Source/Destination Check" for given Network Interface as explained in above mentioned guides. This is to ensure that packets are not discarded based on using Cluster IP address. For additional information please see [AWS: Disabling source/destination checks](https://docs.aws.amazon.com/vpc/latest/userguide/VPC_NAT_Instance.html#EIP_Disable_SrcDestCheck)).
 
 ## AWS: Disaster Recovery
 
@@ -1501,7 +1567,13 @@ SAP HANA extended application services, advanced model (XSA) component is not in
   - [Azure: Virtual Hostname/IP](#azure-virtual-hostnameip)
     - [Azure: Generic implementation steps](#azure-generic-implementation-steps)
     - [Azure: Additional comments](#azure-additional-comments)
+      - [Azure: SAP HANA inbound network communication](#azure-sap-hana-inbound-network-communication)
+      - [Azure: SAP HANA outbound network communication](#azure-sap-hana-outbound-network-communication)
   - [Azure: High Availability](#azure-high-availability)
+    - [Azure: High Availability across Availability Zones](#azure-high-availability-across-availability-zones)
+      - [Azure: Which Availability Zone to use](#azure-which-availability-zone-to-use)
+    - [Azure: Available Fencing mechanism](#azure-available-fencing-mechanism)
+    - [Azure: Implementation of Cluster IP](#azure-implementation-of-cluster-ip)
   - [Azure: Disaster Recovery](#azure-disaster-recovery)
   - [Azure: Data Tiering Options](#azure-data-tiering-options)
     - [Azure: Persistent Memory (NVRAM)](#azure-persistent-memory-nvram)
@@ -1586,7 +1658,7 @@ Note: Cost conscious storage configuration is available for use, however, it is 
 
 Instance specific sizing recommendations are available at [Azure: Azure Ultra disk](https://docs.microsoft.com/en-us/azure/virtual-machines/workloads/sap/hana-vm-operations-storage#azure-ultra-disk-storage-configuration-for-sap-hana).
 
-Note: Please be aware about Ultra disk limitations as described in [Azure: Ultra disk - GA scope and limitations](https://docs.microsoft.com/en-gb/azure/virtual-machines/windows/disks-types#ga-scope-and-limitations).
+Note: Please be aware about Ultra disk limitations as described in [Azure: Ultra disk - GA scope and limitations](https://docs.microsoft.com/en-us/azure/virtual-machines/windows/disks-types#ga-scope-and-limitations).
 
 #### Azure: Storage Setup for SAP HANA Implementation - Azure NetApp Files
 
@@ -1603,7 +1675,7 @@ Note: Please be aware about Ultra disk limitations as described in [Azure: Ultra
 
 Instance specific sizing recommendations are available at [Azure: Azure NetApp Files](https://docs.microsoft.com/en-us/azure/virtual-machines/workloads/sap/hana-vm-operations-storage#nfs-v41-volumes-on-azure-netapp-files).
 
-Note: Please be aware about Azure NetApp Files limitations as described in [Azure: Azure NetApp Files - Important considerations](https://docs.microsoft.com/en-gb/azure/virtual-machines/workloads/sap/sap-hana-scale-out-standby-netapp-files-suse#important-considerations).
+Note: Please be aware about Azure NetApp Files limitations as described in [Azure: Azure NetApp Files - Important considerations](https://docs.microsoft.com/en-us/azure/virtual-machines/workloads/sap/sap-hana-scale-out-standby-netapp-files-suse#important-considerations).
 
 Key limitation is fact that Azure NetApp Files are not Availability Zone aware and can cause performance degradation when not deployed in close proximity (for example following High Availability takeover).
 
@@ -1621,11 +1693,11 @@ This chapter describes recommended implementation of Virtual Hostname and Virtua
 
 The implementation is based on assigning a _Secondary static private IP address_ to an existing network interface of the Azure Virtual Machine (VM). A _Secondary static private IP address_ can be reassigned to another VM and so it can follow SAP HANA instance relocation. For more details see [Azure: Assign multiple IP addresses](https://docs.microsoft.com/en-us/azure/virtual-network/virtual-network-multiple-ip-addresses-portal). This _Secondary static private IP address_ is associated with the Virtual Hostname which is used during SAP HANA instance installation.
 
-### Azure: Generic implementation steps 
+### Azure: Generic implementation steps
 
 - define Virtual IP (in the same subnet as the network interface) and Virtual Hostname for SAP HANA Instance
 - assign _Virtual IP_ as _Secondary static private IP address_ to existing network interface (see [Azure: Add IP addresses to a VM](https://docs.microsoft.com/en-us/azure/virtual-network/virtual-network-multiple-ip-addresses-portal#add)
-- configure OS to use _Virtual IP Address_ 
+- configure OS to use _Virtual IP Address_
   - e.g. [Azure: Add IP addresses to a VM operating system](https://docs.microsoft.com/en-us/azure/virtual-network/virtual-network-multiple-ip-addresses-portal#os-config)
   - e.g. [SUSE: Administration Guide - Configuring Multiple Addresses](https://documentation.suse.com/sles/12-SP4/single-html/SLES-admin/index.html#sec-basicnet-yast-configure-addresses))
 - make Virtual Hostname resolvable (e.g. updating `/etc/hosts`)
@@ -1635,12 +1707,12 @@ The implementation is based on assigning a _Secondary static private IP address_
 
 ### Azure: Additional comments
 
-**SAP HANA inbound network communication**
+#### Azure: SAP HANA inbound network communication
 
-A network communication initiated from a remote system to the Virtual IP of SAP HANA instance is established and takes place between remote system IP and the Virtual IP (_Secondary static private IP address_). 
+A network communication initiated from a remote system to the Virtual IP of SAP HANA instance is established and takes place between remote system IP and the Virtual IP (_Secondary static private IP address_).
 The _Primary private IP address_ on the same interface is not involved in this communication.
 
-**SAP HANA outbound network communication**
+#### Azure: SAP HANA outbound network communication
 
 In contrast to an inbound connection, when SAP HANA instance initiates a network connection to a remote system the _Primary private IP address_ is used as source IP instead of Virtual IP (_Secondary static private IP address_).  
 If there is requirement to use Virtual IP as the source IP, it could be achieved by means of linux routing. The core of the idea is to add route specifying source address like `ip route add <network/mask> via <gateway> src <virtual_ip>` (see [Routing for multiple uplinks/providers](https://www.tldp.org/HOWTO/Adv-Routing-HOWTO/lartc.rpdb.multiple-links.html#AEN258)).
@@ -1649,17 +1721,51 @@ If there is requirement to use Virtual IP as the source IP, it could be achieved
 
 Link to generic content: [Module: High Availability](#module-high-availability)
 
-- link to list of Availability Zones in Azure
-- comment that it is important to measure AZ latency via niping (I will add this as new section in general part)
-- fencing mechanism (options, recommendation)
-- how to implement cluster IP (as load balancer)
-  - explain why we need load balancer (no ARP invalidations)
-  - it is managed by cluster (explain how - but opening port on active node)
-  - link to [Video](https://youtu.be/axyPUGS7Wu4) and [PDF](https://www.suse.com/media/presentation/TUT1134_Microsoft_Azure_and_SUSE_HAE%20_When_Availability_Matters.pdf)
-- links to Azure/SUSE/RHEL documentation
-- how to modify cluster to have active/active
-- how to modify cluster to have tenant specific cluster IPs
-- anything else?
+### Azure: High Availability across Availability Zones
+
+Best practice for deploying SAP HANA is to stretch High Availability cluster across Availability Zones. Each Azure Availability Zone is physically separate infrastructure, therefore deploying High Availability across Availability Zones ensures that there is no shared single-point-of-failure (SPOF) between primary and secondary SAP HANA system. This approach is significantly increasing overall resiliency of the High Availability of the solution.
+
+List of existing Availability Zones for individual Azure Regions is available here: [Azure: Azure geographies](https://azure.microsoft.com/en-us/global-infrastructure/geographies/).
+
+#### Azure: Which Availability Zone to use
+
+Most critical factor for selecting Availability Zones is network latency. Latency between individual Availability Zones can significantly differ and therefore it is important to measure network latency using SAP `niping` tool (see [SAP Note 500235: Network Diagnosis with NIPING](https://launchpad.support.sap.com/#/notes/500235) for additional information) and select Availability Zones with minimal latency.
+
+Furthermore, it is important to note that internal numbering of Availability Zones is specific for each individual Azure account. Therefore, the network latency test must be performed in given account. For additional information please see [Azure: Regions and Availability Zones in Azure - Availability Zones](https://docs.microsoft.com/en-us/azure/availability-zones/az-overview#availability-zones).
+
+Last thing to consider is whether desired VM sizes are available inside selected Availability Zones as not all Availability Zones are offering all VM sizes.
+
+### Azure: Available Fencing mechanism
+
+Azure is using slightly different fencing mechanism based on Linux distribution that is used:
+
+- Red Hat Enterprise Linux (RHEL) is using IPMI-like Fencing (see [Module: High Availability - IPMI-like Fencing](#ipmi-like-fencing) for additional details) and SBD (Storage Based Death) Fencing is not available
+- SUSE Linux Enterprise Server (SLES) is using combination of IPMI-like Fencing and SBD (Storage Based Death) Fencing
+
+Fencing agent source code is available here: [fence_azure_arm](https://github.com/ClusterLabs/fence-agents/blob/master/agents/azure_arm/fence_azure_arm.py). Behind the scenes it is using Azure SDK for Python call `azure_fence.set_network_state`. This will hard stop Azure VM without gracefully stopping the Operating System.
+
+Prerequisites for fencing mechanism to work properly are documented here:
+
+- [Azure: Setting up Pacemaker on SUSE Linux Enterprise Server in Azure](https://docs.microsoft.com/en-us/azure/virtual-machines/workloads/sap/high-availability-guide-suse-pacemaker)
+- [Azure: Setting up Pacemaker on Red Hat Enterprise Linux in Azure](https://docs.microsoft.com/en-us/azure/virtual-machines/workloads/sap/high-availability-guide-rhel-pacemaker)
+
+Additional Information:
+
+- [Azure: High availability of SAP HANA on Azure VMs on SUSE Linux Enterprise Server](https://docs.microsoft.com/en-us/azure/virtual-machines/workloads/sap/sap-hana-high-availability)
+- [Azure: High availability of SAP HANA on Azure VMs on Red Hat Enterprise Linux](https://docs.microsoft.com/en-us/azure/virtual-machines/workloads/sap/sap-hana-high-availability-rhel)
+
+### Azure: Implementation of Cluster IP
+
+Traditional implementation of Cluster IP (not applicable to Azure) is covered in section [Module: High Availability - Typical Cluster IP Implementation](#typical-cluster-ip-implementation).
+
+Azure Software Defined Networking (SDN) is not supporting ARP cache updates, that are required for traditional implementation of Cluster IP. Therefore, although subnets are stretched across Availability Zones, different mechanism is required. Azure implementation of Cluster IP address is based on Azure Network Load Balancer, that is forwarding all packets sent to Load Balancer IP (third IP address) to the IP address of either primary or secondary server, depending on wherever "health probe port" is active.
+
+This "health probe port" is managed by Pacemaker cluster and is implemented as `nc` (RHEL) or `socat` (SLES) command opening dummy port to signal to Load Balancer which VM is currently active (see [ClusterLabs / resource-agents / heartbeat / azure-lb](https://github.com/ClusterLabs/resource-agents/blob/master/heartbeat/azure-lb#L111)). During cluster takeover the Pacemaker cluster will close the "health probe port" on old primary VM and will open it on new primary VM. This will be detected by Azure Load Balancer, which will start forwarding all traffic to new primary VM.
+
+Additional Information:
+
+- [YouTube: TUT1134: Microsoft Azure and SUSE HAE When Availability Matters](https://youtu.be/axyPUGS7Wu4)
+- [PDF: TUT1134: Microsoft Azure and SUSE HAE When Availability Matters](https://www.suse.com/media/presentation/TUT1134_Microsoft_Azure_and_SUSE_HAE%20_When_Availability_Matters.pdf)
 
 ## Azure: Disaster Recovery
 
@@ -1709,181 +1815,4 @@ Additional Information:
 Link to generic content: [Module: SAP XSA](#module-sap-xsa)
 
 SAP HANA extended application services, advanced model (XSA) component is not infrastructure dependent.
-
-# Platform Specific Architecture for IBM Cloud
-
-Description
-
-<!-- TOC -->
-
-- [Platform Specific Architecture for IBM Cloud](#platform-specific-architecture-for-ibm-cloud)
-  - [IBM Cloud: Overall Architecture](#ibm-cloud-overall-architecture)
-  - [IBM Cloud: Basic Architecture](#ibm-cloud-basic-architecture)
-    - [IBM Cloud: Storage Configurations](#ibm-cloud-storage-configurations)
-  - [IBM Cloud: Virtual Hostname/IP](#ibm-cloud-virtual-hostnameip)
-  - [IBM Cloud: High Availability](#ibm-cloud-high-availability)
-  - [IBM Cloud: Disaster Recovery](#ibm-cloud-disaster-recovery)
-  - [IBM Cloud: Data Tiering Options](#ibm-cloud-data-tiering-options)
-  - [IBM Cloud: XSA](#ibm-cloud-xsa)
-
-<!-- /TOC -->
-
-## IBM Cloud: Overall Architecture
-
-- need picture here
-
-- some general text
-  - some basic links to IBM reference architectures and documentation
-
-## IBM Cloud: Basic Architecture
-
-Link to generic content: [Module: Basic Architecture](#module-basic-architecture)
-
-- supported instance types
-- description of single node implementation (storage) + picture
-- description of scale-out implementations (storage) + picture
-- are subnets are stretched across AZs?
-- links to IBM documentation
-
-### IBM Cloud: Storage Configurations
-
-- visualization of storage for IBM Cloud
-
-## IBM Cloud: Virtual Hostname/IP
-
-Link to generic content: [Module: Virtual Hostname/IP](#module-virtual-hostnameip)
-
-- how to implement virtual IP - maybe additional network interface?
-- reference to Instance Move and how to execute IBM specific steps (move network interface?)
-
-## IBM Cloud: High Availability
-
-Link to generic content: [Module: High Availability](#module-high-availability)
-
-- link to list of Availability Zones in IBM
-- comment that it is important to measure AZ latency via niping (I will add this as new section in general part)
-- fencing mechanism (options, recommendation)
-- how to implement cluster IP ?
-  - provide some details
-- links to IBM/SUSE/RHEL documentation
-- how to modify cluster to have active/active
-- how to modify cluster to have tenant specific cluster IPs
-- anything else?
-
-## IBM Cloud: Disaster Recovery
-
-Link to generic content: [Module: Disaster Recovery](#module-disaster-recovery)
-
-- anything to consider? bandwidth?
-
-## IBM Cloud: Data Tiering Options
-
-Link to generic content: [Module: Data Tiering Options](#module-data-tiering-options)
-
-- what is supported what is not (matrix)
-- links to IBM documentation
-- modified pictures of storage setup (if required)
-
-## IBM Cloud: XSA
-
-Link to generic content: [Module: SAP XSA](#module-sap-xsa)
-
-- I think there is nothing infrastructure specific
-
-# High Availability (HA) Operation
-
-Description
-
-<!-- TOC -->
-
-- [High Availability (HA) Operation](#high-availability-ha-operation)
-  - [HA Operation Overview](#ha-operation-overview)
-  - [Process: DR_Step1](#process-drstep1)
-
-<!-- /TOC -->
-
-## HA Operation Overview
-
-- introduction and overview of processes
-  - failover from failed primary
-  - reconnecting old primary as new secondary
-  - maintenance
-  - NZDT
-  - other?
-
-## Process: DR_Step1
-
-# Disaster Recovery (DR) Operation
-
-Description
-
-<!-- TOC -->
-
-- [Disaster Recovery (DR) Operation](#disaster-recovery-dr-operation)
-  - [DR Operation Overview](#dr-operation-overview)
-  - [Process: HA_Step1](#process-hastep1)
-
-<!-- /TOC -->
-
-## DR Operation Overview
-
-- introduction and overview of processes
-  - reconnecting DR after failover of HA
-  - failover to DR locations
-  - other?
-
-## Process: HA_Step1
-
-# SAP HANA Instance Move
-
-Description
-
-<!-- TOC -->
-
-- [SAP HANA Instance Move](#sap-hana-instance-move)
-  - [SAP HANA Instance Move Overview](#sap-hana-instance-move-overview)
-  - [Process: IM_Step1](#process-imstep1)
-
-<!-- /TOC -->
-
-## SAP HANA Instance Move Overview
-
-- need to mention prerequisite to have tenant specific Virtual IP
-
-- reference to infra specific (aws/azure/ibmcloud) documents for instance move commands (depends in infra implementation)
-
-- introduction and overview of steps
-  - procedure how to add Virtual IP
-  - procedure how to move to new host
-  - other?
-
-- how to execute in cluster setup
-
-## Process: IM_Step1
-
-# SAP HANA Tenant Move
-
-Description
-
-<!-- TOC -->
-
-- [SAP HANA Tenant Move](#sap-hana-tenant-move)
-  - [SAP HANA Tenant Move Overview](#sap-hana-tenant-move-overview)
-  - [Process: TM_Step1](#process-tmstep1)
-
-<!-- /TOC -->
-
-## SAP HANA Tenant Move Overview
-
-- need to mention prerequisite to have tenant specific Cluster IPs
-- need to mention can be implemented even without HA
-
-- reference to infra specific (aws/azure/ibmcloud) documents for tenant move commands (depends in infra implementation)
-
-- introduction and overview of steps
-  - steps
-
-- how to execute in cluster setup (add resource, remove resource)
-
-## Process: TM_Step1
 
